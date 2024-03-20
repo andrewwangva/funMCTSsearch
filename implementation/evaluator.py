@@ -19,8 +19,8 @@ from collections.abc import Sequence
 import copy
 from typing import Any
 
-from funsearch.implementation import code_manipulation
-from funsearch.implementation import programs_database
+from implementation import code_manipulation
+from implementation import programs_database
 
 
 class _FunctionLineVisitor(ast.NodeVisitor):
@@ -87,17 +87,26 @@ def _sample_to_program(
 
 class Sandbox:
   """Sandbox for executing generated code."""
-
+  
   def run(
       self,
       program: str,
       function_to_run: str,
-      test_input: str,
+      test_input: Any,
       timeout_seconds: int,
   ) -> tuple[Any, bool]:
     """Returns `function_to_run(test_input)` and whether execution succeeded."""
-    raise NotImplementedError(
-        'Must provide a sandbox for executing untrusted code.')
+    try:
+      # run the program with decorators funsearch.run and funsearch.evolve
+      # remove any decorators from the program
+      program = code_manipulation.remove_decorators(program, 'funsearch')
+      exec(program, globals())
+      #call function to run
+      output = globals()[function_to_run](test_input)
+      return output, True
+    except Exception as e:
+      return e, False
+        
 
 
 def _calls_ancestor(program: str, function_to_evolve: str) -> bool:
@@ -137,7 +146,7 @@ class Evaluator:
       sample: str,
       island_id: int | None,
       version_generated: int | None,
-  ) -> None:
+  ) -> dict[Any, float] | None:
     """Compiles the sample into a program and executes it on test inputs."""
     new_function, program = _sample_to_program(
         sample, version_generated, self._template, self._function_to_evolve)
@@ -150,6 +159,6 @@ class Evaluator:
           and test_output is not None):
         if not isinstance(test_output, (int, float)):
           raise ValueError('@function.run did not return an int/float score.')
-        scores_per_test[current_input] = test_output
+        scores_per_test[str(current_input)] = test_output
     if scores_per_test:
-      self._database.register_program(new_function, island_id, scores_per_test)
+      return scores_per_test

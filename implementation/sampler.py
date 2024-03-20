@@ -17,10 +17,11 @@
 from collections.abc import Collection, Sequence
 
 import numpy as np
+from openai import OpenAI
+import os
 
-from funsearch.implementation import evaluator
-from funsearch.implementation import programs_database
-
+from implementation import evaluator
+from implementation import MCTS
 
 class LLM:
   """Language model that predicts continuation of provided source code."""
@@ -30,7 +31,22 @@ class LLM:
 
   def _draw_sample(self, prompt: str) -> str:
     """Returns a predicted continuation of `prompt`."""
-    raise NotImplementedError('Must provide a language model.')
+    
+    client = OpenAI(
+      api_key=os.environ.get("OPENAI_API_KEY"),
+    )
+    response = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+        model="gpt-3.5-turbo",
+        temperature=0.5,
+    )
+    print(response.choices[0].message.content.strip())
+    return response.choices[0].message.content.strip()
 
   def draw_samples(self, prompt: str) -> Collection[str]:
     """Returns multiple predicted continuations of `prompt`."""
@@ -42,19 +58,19 @@ class Sampler:
 
   def __init__(
       self,
-      database: programs_database.ProgramsDatabase,
+      tree: MCTS.Node,
       evaluators: Sequence[evaluator.Evaluator],
       samples_per_prompt: int,
   ) -> None:
-    self._database = database
+    self.tree = tree
     self._evaluators = evaluators
     self._llm = LLM(samples_per_prompt)
 
   def sample(self):
     """Continuously gets prompts, samples programs, sends them for analysis."""
     while True:
-      prompt = self._database.get_prompt()
-      samples = self._llm.draw_samples(prompt.code)
+      prompt = self.tree.get_prompt()
+      samples = self._llm.draw_samples(prompt)
       # This loop can be executed in parallel on remote evaluator machines.
       for sample in samples:
         chosen_evaluator = np.random.choice(self._evaluators)
