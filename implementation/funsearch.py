@@ -58,7 +58,6 @@ def main(specification: str, inputs: Sequence[Any], config: config_lib.Config):
   # We send the initial implementation to be analysed by one of the evaluators.
   initial = template.get_function(function_to_evolve).body
   scores = evaluators[0].analyse(initial, island_id=None, version_generated=None)
-  import pdb; pdb.set_trace()
   tree = MCTS.Node(1, None)
   tree.root_prompt()
  

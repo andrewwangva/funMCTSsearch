@@ -45,7 +45,8 @@ class LLM:
         model="gpt-3.5-turbo",
         temperature=0.5,
     )
-    print(response.choices[0].message.content.strip())
+
+    print("response :\n", response.choices[0].message.content.strip())
     return response.choices[0].message.content.strip()
 
   def draw_samples(self, prompt: str) -> Collection[str]:
@@ -74,5 +75,6 @@ class Sampler:
       # This loop can be executed in parallel on remote evaluator machines.
       for sample in samples:
         chosen_evaluator = np.random.choice(self._evaluators)
-        chosen_evaluator.analyse(
-            sample, prompt.island_id, prompt.version_generated)
+        scores = chosen_evaluator.analyse(sample, None, None)
+        print("scores: \n", scores)
+

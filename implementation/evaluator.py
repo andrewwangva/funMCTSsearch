@@ -18,6 +18,7 @@ import ast
 from collections.abc import Sequence
 import copy
 from typing import Any
+import re
 
 from implementation import code_manipulation
 from implementation import programs_database
@@ -44,10 +45,19 @@ class _FunctionLineVisitor(ast.NodeVisitor):
 
 
 def _trim_function_body(generated_code: str) -> str:
+  print("generated_code: \n", generated_code)
   """Extracts the body of the generated function, trimming anything after it."""
   if not generated_code:
     return ''
-  code = f'def fake_function_header():\n{generated_code}'
+  if generated_code.startswith('def priority'):
+    #replace priority with fake_function_header
+    code = generated_code.replace('def priority', 'def fake_function_header')
+  else:
+    lines = generated_code.splitlines()
+    if(len(lines[0]) == len(lines[0].lstrip())):
+      lines = ["    " + line for line in lines]
+    code = f'def fake_function_header():\n{"".join(lines)}'
+    
   tree = None
   # We keep trying and deleting code from the end until the parser succeeds.
   while tree is None:
@@ -62,6 +72,13 @@ def _trim_function_body(generated_code: str) -> str:
   visitor = _FunctionLineVisitor('fake_function_header')
   visitor.visit(tree)
   body_lines = code.splitlines()[1:visitor.function_end_line]
+  first_line = body_lines[0]
+  indent = len(first_line) - len(first_line.lstrip())
+  new_indent = "  "
+  for i in range(len(body_lines)):
+    num_indent = (len(body_lines[i]) - len(body_lines[i].lstrip()))//indent
+    body_lines[i] = new_indent * num_indent + body_lines[i].lstrip()
+  print("body_lines: \n", body_lines)
   return '\n'.join(body_lines) + '\n\n'
 
 
@@ -72,6 +89,7 @@ def _sample_to_program(
     function_to_evolve: str,
 ) -> tuple[code_manipulation.Function, str]:
   """Returns the compiled generated function and the full runnable program."""
+  
   body = _trim_function_body(generated_code)
   if version_generated is not None:
     body = code_manipulation.rename_function_calls(
@@ -82,6 +100,7 @@ def _sample_to_program(
   program = copy.deepcopy(template)
   evolved_function = program.get_function(function_to_evolve)
   evolved_function.body = body
+  print("body: \n", body)
   return evolved_function, str(program)
 
 
@@ -150,7 +169,7 @@ class Evaluator:
     """Compiles the sample into a program and executes it on test inputs."""
     new_function, program = _sample_to_program(
         sample, version_generated, self._template, self._function_to_evolve)
-
+    
     scores_per_test = {}
     for current_input in self._inputs:
       test_output, runs_ok = self._sandbox.run(
@@ -160,5 +179,7 @@ class Evaluator:
         if not isinstance(test_output, (int, float)):
           raise ValueError('@function.run did not return an int/float score.')
         scores_per_test[str(current_input)] = test_output
+      else:
+        print("error", test_output)
     if scores_per_test:
       return scores_per_test

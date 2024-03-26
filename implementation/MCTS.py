@@ -1,5 +1,5 @@
 BIN_PACKING_PROMPT = '''\
-def priority(item: float, bins: np.ndarray) -> np.ndarray:
+Write the heuristic function `priority` for online binpacking. The function should take in a float `item` and a numpy array `bins` and return a numpy array of the same size as `bins` with the priority score of each bin. The priority score should be a float and should be higher for bins with higher priority. The function should not use any external libraries other than `numpy`.
   """Returns priority with which we want to add item to each bin.
 
   Args:
@@ -27,7 +27,7 @@ class Node:
     
     def get_prompt(self):
         return self.prompt
-    
+
     def value(self):
         # Average value for a node
         return self.value_sum / self.visit_count
