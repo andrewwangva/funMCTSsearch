@@ -1,22 +1,20 @@
+from jinja2 import Template
+
 EVOLVE_BIN_PACKING_PROMPT = '''\
-Modify the below heuristic function `priority` for online binpacking. The function should take in a float `item` and a numpy array `bins` and return a numpy array of the same size as `bins` with the priority score of each bin. The priority score should be a float and should be higher for bins with higher priority. The function should not use any external libraries other than `numpy`.
-Create a more complex heuristic function.
+Modify the below heuristic function slightly. The function, priority, assigns priority to bins to solve the online binpacking problem. The function should take in a float `item` and a numpy array `bins` and return a numpy array of the same size as `bins` with the priority score of each bin. The priority score should be a float and should be higher for bins with higher priority. The function should not use any external libraries other than `numpy`.
+Create a more rich heuristic function by slightly modifying or adding lines. Include the whole function, including the same function signature and the body.
 
-"""
-Returns priority with which we want to add item to each bin.
+Original function:
+{{ Example }}
 
-Args:
-  item: Size of item to be added to the bin.
-  bins: Array of capacities for each bin.
-
-Return:
-  Array of same size as bins with priority score of each bin.
-"""
+Modified function:
 def priority(item: float, bins: np.ndarray) -> np.ndarray:
 '''
 
 INIT_BIN_PACKING_PROMPT = '''\
 Write the heuristic function `priority` for online binpacking. The function should take in a float `item` and a numpy array `bins` and return a numpy array of the same size as `bins` with the priority score of each bin. The priority score should be a float and should be higher for bins with higher priority. The function should not use any external libraries other than `numpy`.
+Include the whole function, including the function signature and the body.
+
 """
 Returns priority with which we want to add item to each bin.
 
@@ -45,7 +43,9 @@ class Node:
     
     def create_child(self, action):
         if action not in self.children.keys():
-            self.children[action] = Node(prior=1, prompt=EVOLVE_BIN_PACKING_PROMPT + action, parent=self, parent_action=action)
+            template = Template(EVOLVE_BIN_PACKING_PROMPT)
+            new_prompt = template.render(Example=action)
+            self.children[action] = Node(prior=1, prompt=new_prompt, parent=self, parent_action=action)
         return self.children[action]
 
     def value(self):

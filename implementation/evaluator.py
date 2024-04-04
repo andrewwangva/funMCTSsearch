@@ -47,6 +47,8 @@ class _FunctionLineVisitor(ast.NodeVisitor):
 def _normalize_indentation(lines: Sequence[str]) -> list[str]:
 	"""Replaces any indentation format with 2 spaces in a list of lines."""
 	indentation_used = len(lines[0]) - len(lines[0].lstrip())
+	if(indentation_used == 0):
+		return lines
 	indentation = ' ' * 2
 	lines = [(indentation * ((len(line) - len(line.lstrip()))//indentation_used)) + line.lstrip() for line in lines]
 	return lines

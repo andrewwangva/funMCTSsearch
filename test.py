@@ -80,24 +80,20 @@ def priority(item: float, bins: np.ndarray) -> np.ndarray:
   """
   return -(bins - item)
 '''
-inputs = create_bin_packing_datasets()
+inputs, opt_num_bins = create_bin_packing_datasets()
 
 
 gen_code = '''\
- import numpy as np
-
-def priority(item: float, bins: np.ndarray) -> np.ndarray:
-    # Initialize an array to store the priority scores of each bin
-    priority_scores = np.zeros_like(bins, dtype=float)
-    
-    # Calculate the available space in each bin
-    available_space = bins - item
-    
-    # Calculate the priority score for each bin by dividing the available space by the bin size
-    priority_scores = (available_space / bins)
-    
-    return priority_scores
+# Calculate the remaining capacity of each bin after adding the item
+  remaining_capacity = bins - item
+  
+  # Calculate the priority score for each bin
+  priority_scores = np.maximum(remaining_capacity, 0) + bins  # Higher priority for bins with more remaining capacity and larger initial capacity
+  priority_scores = np.maximum(priority_scores, bins.mean())  # Add a bias towards bins with average capacity
+  
+  return priority_scores
 '''
+import pdb; pdb.set_trace()
 trim = evaluator._trim_function_body(gen_code)
 print("1: ", trim)
 

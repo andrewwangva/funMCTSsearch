@@ -23,6 +23,7 @@ import os
 from implementation import evaluator
 from implementation import MCTS
 
+
 class LLM:
   """Language model that predicts continuation of provided source code."""
 
@@ -43,9 +44,8 @@ class LLM:
             }
         ],
         model="gpt-3.5-turbo",
-        temperature=0.5,
+        temperature=1,
     )
-
     print("response :\n", response.choices[0].message.content.strip())
     return response.choices[0].message.content.strip()
 
@@ -69,12 +69,28 @@ class Sampler:
 
   def sample(self):
     """Continuously gets prompts, samples programs, sends them for analysis."""
-    while True:
-      prompt = self.tree.get_prompt()
-      samples = self._llm.draw_samples(prompt)
-      # This loop can be executed in parallel on remote evaluator machines.
-      for sample in samples:
-        chosen_evaluator = np.random.choice(self._evaluators)
-        scores = chosen_evaluator.analyse(sample, None, None)
-        print("scores: \n", scores)
+
+    min_score = 1000000
+    opt_code = None
+
+    queue = [self.tree]
+    for _ in range(5):
+      new_queue = []
+      for tree in queue:
+        prompt = tree.get_prompt()
+        samples = self._llm.draw_samples(prompt)
+        # This loop can be executed in parallel on remote evaluator machines.
+        for sample in samples:
+          chosen_evaluator = np.random.choice(self._evaluators)
+          scores = chosen_evaluator.analyse(sample, None, None)
+          if(scores):
+            new_queue.append(tree.create_child(evaluator._trim_function_body(sample)))
+            if(-scores["OR1"] < min_score):
+              min_score = -scores["OR1"]
+              opt_code = sample
+          print("scores: \n", scores)
+      queue = new_queue
+      print(min_score)
+      print(opt_code)
+
 
