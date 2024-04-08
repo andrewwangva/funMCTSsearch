@@ -47,9 +47,13 @@ class Node:
             new_prompt = template.render(Example=action)
             self.children[action] = Node(prior=1, prompt=new_prompt, parent=self, parent_action=action)
         return self.children[action]
-
+    
     def value(self):
         # Average value for a node
         return self.value_sum / self.visit_count
-  
+
+    def update(self,reward):
+        self.value_sum += reward
+        self.visit_count += 1
+              
   

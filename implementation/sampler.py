@@ -78,17 +78,16 @@ class Sampler:
       new_queue = []
       for tree in queue:
         prompt = tree.get_prompt()
-        samples = self._llm.draw_samples(prompt)
-        # This loop can be executed in parallel on remote evaluator machines.
-        for sample in samples:
-          chosen_evaluator = np.random.choice(self._evaluators)
-          scores = chosen_evaluator.analyse(sample, None, None)
-          if(scores):
-            new_queue.append(tree.create_child(evaluator._trim_function_body(sample)))
-            if(-scores["OR1"] < min_score):
-              min_score = -scores["OR1"]
-              opt_code = sample
-          print("scores: \n", scores)
+        sample = self._llm.draw_samples(prompt)[0]
+        chosen_evaluator = np.random.choice(self._evaluators)
+        scores = chosen_evaluator.analyse(sample, None, None)
+        
+        if(scores):
+          new_queue.append(tree.create_child(evaluator._trim_function_body(sample)))
+          if(-scores["OR1"] < min_score):
+            min_score = -scores["OR1"]
+            opt_code = sample
+        print("scores: \n", scores)
       queue = new_queue
       print(min_score)
       print(opt_code)
