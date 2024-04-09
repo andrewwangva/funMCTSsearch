@@ -22,6 +22,7 @@ import os
 
 from implementation import evaluator
 from implementation import MCTS
+from implementation import config as config_lib
 
 
 class LLM:
@@ -46,7 +47,6 @@ class LLM:
         model="gpt-3.5-turbo",
         temperature=1,
     )
-    print("response :\n", response.choices[0].message.content.strip())
     return response.choices[0].message.content.strip()
 
   def draw_samples(self, prompt: str) -> Collection[str]:
@@ -62,10 +62,12 @@ class Sampler:
       tree: MCTS.Node,
       evaluators: Sequence[evaluator.Evaluator],
       samples_per_prompt: int,
+      config: config_lib.Config = None,
   ) -> None:
     self.tree = tree
     self._evaluators = evaluators
     self._llm = LLM(samples_per_prompt)
+    self.config = config
 
   def sample(self):
     """Continuously gets prompts, samples programs, sends them for analysis."""
@@ -73,8 +75,70 @@ class Sampler:
     min_score = 1000000
     opt_code = None
 
+    for iter in range(100):
+      MCTS.visualize_tree(self.tree)
+      print("min score", min_score)
+      """
+      Select
+      """
+      selected_node = MCTS.select(self.tree)
+
+      """
+      Expansion
+      """
+      prompt = selected_node.get_prompt()
+      samples = self._llm.draw_samples(prompt)
+      leaf_nodes = []
+      for sample in samples:
+        chosen_evaluator = np.random.choice(self._evaluators)
+        scores = chosen_evaluator.analyse(sample, None, None)
+        if(scores):
+          v = np.exp(1 - (-scores["OR1"] - self.config.opt_num_bins)/self.config.opt_num_bins) #e^(1 - (-score - lower_bound)/lower_bound)
+          new_node = selected_node.create_child(evaluator._trim_function_body(sample), prior=v) #change prior
+          leaf_nodes.append(new_node)
+          if(-scores["OR1"] < min_score):
+            min_score = -scores["OR1"]
+            opt_code = sample
+
+      """
+      Simulation
+      """
+      
+      for leaf_node in leaf_nodes:
+        to_evaluate = []
+        for sim in range(3):
+          current_node = leaf_node
+          for _ in range(1):
+            prompt = current_node.get_prompt()
+            sample = self._llm._draw_sample(prompt)
+            child_node = current_node.create_child(evaluator._trim_function_body(sample))
+            current_node = child_node
+          to_evaluate.append(current_node)
+
+        """
+        Backpropagation
+        """
+        for node in to_evaluate:
+          scores = chosen_evaluator.analyse(node.parent_action, None, None)
+          if(scores):
+            v = np.exp(1 - (-scores["OR1"] - self.config.opt_num_bins)/self.config.opt_num_bins)
+            MCTS.backprop(node, v) #change reward
+            if(-scores["OR1"] < min_score):
+              min_score = -scores["OR1"]
+              opt_code = sample
+        
+        #reset leaf_node children
+        leaf_node.children = {}
+    return opt_code
+
+  def sample_as_tree(self):
+    """Continuously gets prompts, samples programs, sends them for analysis."""
+
+    min_score = 1000000
+    opt_code = None
+
     queue = [self.tree]
-    for _ in range(5):
+    for iter in range(5):
       new_queue = []
       for tree in queue:
         prompt = tree.get_prompt()
@@ -85,12 +149,13 @@ class Sampler:
           scores = chosen_evaluator.analyse(sample, None, None)
           if(scores):
             new_queue.append(tree.create_child(evaluator._trim_function_body(sample)))
-            if(-scores["OR1"] < min_score):
+            if(-scores["OR1"] < min_score): #Harcoded in for now
               min_score = -scores["OR1"]
               opt_code = sample
           print("scores: \n", scores)
       queue = new_queue
-      print(min_score)
-      print(opt_code)
+      print(f"iter: {iter}")
+      print(f"min score: {min_score}")
+      print(f"optimal code: {opt_code}")
 
 

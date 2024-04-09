@@ -60,7 +60,7 @@ def main(specification: str, inputs: Sequence[Any], config: config_lib.Config):
   scores = evaluators[0].analyse(initial, island_id=None, version_generated=None)
   tree = MCTS.Node(prior=1)
  
-  samplers = [sampler.Sampler(tree, evaluators, config.samples_per_prompt)
+  samplers = [sampler.Sampler(tree, evaluators, config.samples_per_prompt, config=config)
               for _ in range(config.num_samplers)]
   
   

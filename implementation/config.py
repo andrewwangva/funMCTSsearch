@@ -56,4 +56,5 @@ class Config:
       default_factory=ProgramsDatabaseConfig)
   num_samplers: int = 15
   num_evaluators: int = 140
-  samples_per_prompt: int = 2
+  samples_per_prompt: int = 4
+  opt_num_bins = 49.05
