@@ -31,6 +31,24 @@ class LLM:
   def __init__(self, samples_per_prompt: int) -> None:
     self._samples_per_prompt = samples_per_prompt
 
+  def _draw_strong_sample(self, prompt: str) -> str:
+    """Returns a predicted continuation of `prompt`."""
+    
+    client = OpenAI(
+      api_key=os.environ.get("OPENAI_API_KEY"),
+    )
+    response = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+        model="gpt-4",
+        temperature=1.2,
+    )
+    return response.choices[0].message.content.strip()
+
   def _draw_sample(self, prompt: str) -> str:
     """Returns a predicted continuation of `prompt`."""
     
@@ -45,11 +63,14 @@ class LLM:
             }
         ],
         model="gpt-3.5-turbo",
-        temperature=1,
+        temperature=1.2,
     )
     return response.choices[0].message.content.strip()
 
   def draw_samples(self, prompt: str) -> Collection[str]:
+    """Returns multiple predicted continuations of `prompt`."""
+    return [self._draw_sample(prompt) for _ in range(self._samples_per_prompt)]
+  def draw_strong_samples(self, prompt: str) -> Collection[str]:
     """Returns multiple predicted continuations of `prompt`."""
     return [self._draw_sample(prompt) for _ in range(self._samples_per_prompt)]
 
@@ -75,7 +96,11 @@ class Sampler:
     min_score = 1000000
     opt_code = None
 
-    for iter in range(100):
+    for iter in range(1000):
+      with open("results.txt", "a") as f:
+        f.write(f"iter: {iter}\n")
+        f.write("min score: " + str(min_score) + "\n")
+        f.write("optimal code: " + str(opt_code) + "\n")
       MCTS.visualize_tree(self.tree)
       print("min score", min_score)
       """
@@ -87,18 +112,21 @@ class Sampler:
       Expansion
       """
       prompt = selected_node.get_prompt()
-      samples = self._llm.draw_samples(prompt)
+      samples = self._llm.draw_strong_samples(prompt)
       leaf_nodes = []
       for sample in samples:
         chosen_evaluator = np.random.choice(self._evaluators)
-        scores = chosen_evaluator.analyse(sample, None, None)
-        if(scores):
-          v = np.exp(1 - (-scores["OR1"] - self.config.opt_num_bins)/self.config.opt_num_bins) #e^(1 - (-score - lower_bound)/lower_bound)
-          new_node = selected_node.create_child(evaluator._trim_function_body(sample), prior=v) #change prior
-          leaf_nodes.append(new_node)
-          if(-scores["OR1"] < min_score):
-            min_score = -scores["OR1"]
-            opt_code = sample
+        try:
+          scores = chosen_evaluator.analyse(sample, None, None)
+          if(scores):
+            v = np.exp(1 - (-scores["OR1"] - self.config.opt_num_bins)/self.config.opt_num_bins) #e^(1 - (-score - lower_bound)/lower_bound)
+            new_node = selected_node.create_child(evaluator._trim_function_body(sample), prior=v) #change prior
+            leaf_nodes.append(new_node)
+            if(-scores["OR1"] < min_score):
+              min_score = -scores["OR1"]
+              opt_code = sample
+        except Exception as e:
+          pass
 
       """
       Simulation
@@ -106,9 +134,9 @@ class Sampler:
       
       for leaf_node in leaf_nodes:
         to_evaluate = []
-        for sim in range(3):
+        for sim in range(5):
           current_node = leaf_node
-          for _ in range(1):
+          for _ in range(3):
             prompt = current_node.get_prompt()
             sample = self._llm._draw_sample(prompt)
             child_node = current_node.create_child(evaluator._trim_function_body(sample))
@@ -119,13 +147,16 @@ class Sampler:
         Backpropagation
         """
         for node in to_evaluate:
-          scores = chosen_evaluator.analyse(node.parent_action, None, None)
-          if(scores):
-            v = np.exp(1 - (-scores["OR1"] - self.config.opt_num_bins)/self.config.opt_num_bins)
-            MCTS.backprop(node, v) #change reward
-            if(-scores["OR1"] < min_score):
-              min_score = -scores["OR1"]
-              opt_code = sample
+          try:
+            scores = chosen_evaluator.analyse(node.parent_action, None, None)
+            if(scores):
+              v = np.exp(1 - (-scores["OR1"] - self.config.opt_num_bins)/self.config.opt_num_bins)
+              MCTS.backprop(node, v) #change reward
+              if(-scores["OR1"] < min_score):
+                min_score = -scores["OR1"]
+                opt_code = sample
+          except Exception as e:
+            pass
         
         #reset leaf_node children
         leaf_node.children = {}

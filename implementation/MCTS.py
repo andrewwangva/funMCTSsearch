@@ -5,7 +5,7 @@ from datetime import datetime
 
 EVOLVE_BIN_PACKING_PROMPT = '''\
 Modify the below heuristic function slightly. The function, priority, assigns priority to bins to solve the online binpacking problem. The function should take in a float `item` and a numpy array `bins` and return a numpy array of the same size as `bins` with the priority score of each bin. The priority score should be a float and should be higher for bins with higher priority. The function should not use any external libraries other than `numpy`.
-Create a more rich heuristic function by slightly modifying or adding lines. Include the whole function, including the same function signature and the body.
+Create a more rich heuristic function by slightly modifying or adding lines. Include the whole function, including the same function signature and the body. Good heuristics might consider factors like the remaining capacity of each bin, the initial capacity of each bin, and the tightness of the packing.
 
 Original function:
 {{ Example }}
@@ -16,7 +16,7 @@ def priority(item: float, bins: np.ndarray) -> np.ndarray:
 
 INIT_BIN_PACKING_PROMPT = '''\
 Write the heuristic function `priority` for online binpacking. The function should take in a float `item` and a numpy array `bins` and return a numpy array of the same size as `bins` with the priority score of each bin. The priority score should be a float and should be higher for bins with higher priority. The function should not use any external libraries other than `numpy`.
-Include the whole function, including the function signature and the body.
+Include the whole function, including the function signature and the body. Good heuristics might consider factors like the remaining capacity of each bin, the initial capacity of each bin, and the tightness of the packing.
 
 """
 Returns priority with which we want to add item to each bin.

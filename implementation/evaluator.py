@@ -71,6 +71,10 @@ def _trim_function_body(generated_code: str) -> str:
 	returns: "  return -(bins - item)"
 	"""
 	#find priority
+	if(generated_code.startswith("```") and generated_code.endswith("```")):
+		lines = generated_code.splitlines()
+		if len(lines) > 2:
+			generated_code = '\n'.join(lines[1:-1])
 	if("def priority" in generated_code):
 		#remove code before priority
 		code = generated_code[generated_code.index("def priority"):]
